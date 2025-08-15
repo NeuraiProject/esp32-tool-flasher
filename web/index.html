@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEURAI: ESP32 Tool flash</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .status.disconnected {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .status.connected {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .status.flashing {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        select:hover {
+            border-color: #667eea;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-connect {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-connect:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-flash {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-flash:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(245, 87, 108, 0.3);
+        }
+
+        .btn-disconnect {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: white;
+        }
+
+        .btn-disconnect:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(250, 112, 154, 0.3);
+        }
+
+        .progress-container {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .console {
+            margin-top: 20px;
+            padding: 15px;
+            background: #1e1e1e;
+            border-radius: 8px;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+            display: none;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .info {
+            background: #e3f2fd;
+            color: #1565c0;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Neurai ESP32 Tool flash</h1>
+        
+        <div class="info">
+            ⚡ This tool allows you to flash ESP32 devices directly from your browser. 
+            Make sure you're using a compatible browser (Chrome, Edge) with Web Serial API support.
+        </div>
+
+        <div class="status disconnected" id="status">
+            Status: Disconnected
+        </div>
+
+        <div class="control-group">
+            <label for="baudRate">Baud Rate:</label>
+            <input type="number" id="baudRate" value="115200" />
+        </div>
+
+        <div class="control-group">
+            <label for="firmwareSelect">Select Firmware:</label>
+            <select id="firmwareSelect" disabled>
+                <option value="">-- Select a firmware file --</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="flashAddress">Flash Address (hex):</label>
+            <input type="number" id="flashAddress" value="0x0" />
+        </div>
+
+        <div class="button-group">
+            <button class="btn-connect" id="connectBtn" onclick="connectDevice()">
+                Connect
+            </button>
+            <button class="btn-flash" id="flashBtn" onclick="flashDevice()" disabled>
+                Flash
+            </button>
+            <button class="btn-disconnect" id="disconnectBtn" onclick="disconnectDevice()" disabled>
+                Disconnect
+            </button>
+        </div>
+
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill">0%</div>
+            </div>
+        </div>
+
+        <div class="console" id="console"></div>
+        
+        <div class="error" id="errorMsg"></div>
+    </div>
+
+    <script src="https://unpkg.com/esptool-js@0.4.5/bundle.js"></script>
+    <script>
+        let espTool = null;
+        let connected = false;
+        
+        // Console logging
+        function log(message) {
+            const console = document.getElementById('console');
+            console.style.display = 'block';
+            const timestamp = new Date().toLocaleTimeString();
+            console.innerHTML += `[${timestamp}] ${message}\n`;
+            console.scrollTop = console.scrollHeight;
+        }
+
+        // Update status
+        function updateStatus(status, type = 'disconnected') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = `Status: ${status}`;
+            statusEl.className = `status ${type}`;
+        }
+
+        // Show error
+        function showError(message) {
+            const errorEl = document.getElementById('errorMsg');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            setTimeout(() => {
+                errorEl.style.display = 'none';
+            }, 5000);
+        }
+
+        // Update progress
+        function updateProgress(percent) {
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            
+            if (percent > 0) {
+                progressContainer.style.display = 'block';
+                progressFill.style.width = percent + '%';
+                progressFill.textContent = percent + '%';
+            } else {
+                progressContainer.style.display = 'none';
+            }
+        }
+
+        // Load firmware list from /bin directory
+        async function loadFirmwareList() {
+            try {
+                // In production, you would fetch this from your server
+                // For demo purposes, we'll add some example entries
+                const firmwareSelect = document.getElementById('firmwareSelect');
+                
+                // This would be replaced with an actual API call to list files in /bin
+                const firmwareFiles = [
+                    'ESP32-S3-Lily-Display.v.1.0.bin',
+                    'ESP32-S3-Lily-Display.v.1.1.bin',
+                    'ESP32-S3-Lily-Display.v.1.2.bin',
+                ];
+                
+                firmwareFiles.forEach(file => {
+                    const option = document.createElement('option');
+                    option.value = `/bin/${file}`;
+                    option.textContent = file;
+                    firmwareSelect.appendChild(option);
+                });
+                
+                log('Firmware list loaded successfully');
+            } catch (error) {
+                log('Error loading firmware list: ' + error.message);
+                showError('Failed to load firmware list');
+            }
+        }
+
+        // Connect to ESP32
+        async function connectDevice() {
+            try {
+                const baudRate = parseInt(document.getElementById('baudRate').value);
+                
+                if (!navigator.serial) {
+                    throw new Error('Web Serial API not supported. Please use Chrome or Edge browser.');
+                }
+
+                log('Requesting serial port...');
+                const port = await navigator.serial.requestPort();
+                
+                log('Connecting to ESP32...');
+                espTool = new ESPLoader({
+                    port: port,
+                    baudrate: baudRate,
+                    romBaudrate: baudRate
+                });
+
+                await espTool.main();
+                
+                connected = true;
+                updateStatus('Connected', 'connected');
+                log('Successfully connected to ESP32');
+                log(`Chip: ${espTool.chip.CHIP_NAME}`);
+                log(`MAC Address: ${espTool.chip.read_mac()}`);
+                
+                // Enable/disable buttons
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('flashBtn').disabled = false;
+                document.getElementById('disconnectBtn').disabled = false;
+                document.getElementById('firmwareSelect').disabled = false;
+                
+            } catch (error) {
+                log('Connection failed: ' + error.message);
+                showError('Failed to connect: ' + error.message);
+                updateStatus('Disconnected', 'disconnected');
+            }
+        }
+
+        // Flash firmware to ESP32
+        async function flashDevice() {
+            try {
+                const firmwareSelect = document.getElementById('firmwareSelect');
+                const flashAddress = parseInt(document.getElementById('flashAddress').value);
+                
+                if (!firmwareSelect.value) {
+                    throw new Error('Please select a firmware file');
+                }
+
+                if (!connected || !espTool) {
+                    throw new Error('Device not connected');
+                }
+
+                updateStatus('Flashing...', 'flashing');
+                log(`Fetching firmware from ${firmwareSelect.value}...`);
+                
+                // Fetch the firmware file
+                const response = await fetch(firmwareSelect.value);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch firmware file');
+                }
+                
+                const firmwareData = await response.arrayBuffer();
+                log(`Firmware size: ${firmwareData.byteLength} bytes`);
+                log(`Flashing to address: 0x${flashAddress.toString(16)}`);
+                
+                // Flash the firmware with progress callback
+                await espTool.write_flash({
+                    fileArray: [{
+                        data: firmwareData,
+                        address: flashAddress
+                    }],
+                    flashSize: "keep",
+                    flashMode: "keep",
+                    flashFreq: "keep",
+                    eraseAll: false,
+                    compress: true,
+                    reportProgress: (fileIndex, written, total) => {
+                        const percent = Math.round((written / total) * 100);
+                        updateProgress(percent);
+                        if (percent % 10 === 0) {
+                            log(`Progress: ${percent}%`);
+                        }
+                    }
+                });
+                
+                log('Flash complete! Resetting device...');
+                await espTool.hard_reset();
+                
+                updateStatus('Connected', 'connected');
+                updateProgress(0);
+                log('Device has been successfully flashed and reset');
+                
+            } catch (error) {
+                log('Flash failed: ' + error.message);
+                showError('Failed to flash: ' + error.message);
+                updateStatus('Connected', 'connected');
+                updateProgress(0);
+            }
+        }
+
+        // Disconnect from ESP32
+        async function disconnectDevice() {
+            try {
+                if (espTool) {
+                    await espTool.disconnect();
+                    espTool = null;
+                }
+                
+                connected = false;
+                updateStatus('Disconnected', 'disconnected');
+                log('Disconnected from device');
+                
+                // Enable/disable buttons
+                document.getElementById('connectBtn').disabled = false;
+                document.getElementById('flashBtn').disabled = true;
+                document.getElementById('disconnectBtn').disabled = true;
+                document.getElementById('firmwareSelect').disabled = true;
+                
+            } catch (error) {
+                log('Disconnect error: ' + error.message);
+                showError('Error during disconnect: ' + error.message);
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            loadFirmwareList();
+            
+            // Check for Web Serial API support
+            if (!navigator.serial) {
+                showError('Your browser does not support Web Serial API. Please use Chrome or Edge.');
+                document.getElementById('connectBtn').disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>
